@@ -1,6 +1,13 @@
-use std::fs;
+use std::{fs, usize};
 use std::num::Wrapping;
 use std::env;
+use std::io::Read;
+use rand::Rng;
+use getch::Getch;
+use std::io::stdin;
+
+// The amount of cells available to programs
+const SPACE: usize = 30_000;
 
 fn main() {
     let file_name: String = env::args().nth(1).unwrap();
@@ -8,7 +15,7 @@ fn main() {
     let contents = fs::read_to_string(file_name)
         .expect("Something went wrong reading the file");
 
-    let mut space : [Wrapping<u8>; 30000] = [Wrapping(0); 30000];
+    let mut space : [Wrapping<u8>; SPACE] = [Wrapping(0); SPACE];
     let mut cur_point: usize = 0;
     let mut cur_location: usize = 0;
     let chars: Vec<_> = contents.chars().collect();
@@ -21,35 +28,42 @@ fn main() {
             '+'=> space[cur_point] += Wrapping(1),
             '-'=> space[cur_point] -= Wrapping(1),
             '.'=> print!("{}", space[cur_point].0 as char),
-            ','=> {},
-            '['=> if space[cur_point] == Wrapping(0) {
-                cur_location += 1;
-                let mut ct: i32 = 0;
-                while ct != 0 || chars[cur_location] != ']' {
-                    if chars[cur_location] == '[' {
-                        ct += 1;
-                    } else if chars[cur_location] == ']' {
-                        ct -= 1;
+            ','=> {
+                let mut s=String::new();
+                stdin().read_line(&mut s);
+                space[cur_point] = Wrapping(s.chars().nth(0).unwrap() as u8);
+            },
+            '[' | ']' => {
+                if space[cur_point] == Wrapping(0) || c == ']' {
+                    let modifier: i32 = if c == '[' {1} else {-1};
+                    let modifier_char: char = if c == ']' {'['} else {']'};
+                    let mut ct: i32 = 0;
+
+                    cur_location = add(cur_location, modifier);
+                    while ct != 0 || chars[cur_location] != modifier_char {
+                        if chars[cur_location] == '[' {
+                            ct += 1;
+                        } else if chars[cur_location] == ']' {
+                            ct -= 1;
+                        }
+                        cur_location = add(cur_location, modifier);
                     }
-                    cur_location += 1;
+                    if c == ']' {cur_location -= 1};
                 }
             },
-            ']'=> {
-                cur_location -= 1;
-                let mut ct: i32 = 0;
-                while ct != 0 || chars[cur_location] != '[' {
-                    if chars[cur_location] == '[' {
-                        ct += 1;
-                    } else if chars[cur_location] == ']' {
-                        ct -= 1;
-                    }
-                    cur_location -= 1;
-                }
-                cur_location -=1;
-            },
+            '*' => {space[cur_point] = rand::thread_rng().gen()},
+            '#' => print!("{}", space[cur_point].0),
             _ => { }
         }
         cur_location += 1;
     }
     println!("\n\n");
+}
+
+fn add(u: usize, i: i32) -> usize {
+    if i.is_negative() {
+        u - i.wrapping_abs() as u32 as usize
+    } else {
+        u + i as usize
+    }
 }
